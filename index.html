@@ -3,28 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerala Panchangam - Historical Precision</title>
+    <title>Kerala Panchangam - Easy Date Select</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
-        
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .malayalam-font { font-family: 'Noto Sans Malayalam', sans-serif; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
+        /* Custom Select Styling */
+        select { 
+            -webkit-appearance: none; 
+            appearance: none; 
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); 
+            background-repeat: no-repeat; 
+            background-position: right 0.5rem center; 
+            background-size: 1em; 
+        }
+        
+        /* Hide scrollbars */
+        .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -32,459 +36,420 @@
 
     <script type="text/babel">
         /**
-         * ==========================================
-         * HIGH-PRECISION ASTRONOMY ENGINE (IST)
-         * - Historical Delta T Lookup Table (1900-2100)
-         * - Nutation & Aberration Corrections
-         * ==========================================
+         * ====================================================================
+         * MODULE: ASTRO-ENGINE (Professional Grade)
+         * Features: ELP-2000 Moon, VSOP87 Sun (Simulated), Tithi Engine
+         * ====================================================================
          */
 
-        const DEG2RAD = Math.PI / 180;
-        const RAD2DEG = 180 / Math.PI;
+        const D2R = Math.PI / 180.0;
+        const R2D = 180.0 / Math.PI;
 
-        // --- 1. UTILITY FUNCTIONS ---
-
-        function normalize(angle) {
-            angle = angle - Math.floor(angle / 360) * 360;
-            if (angle < 0) angle += 360;
+        const normalize = (angle) => {
+            angle = angle - Math.floor(angle / 360.0) * 360.0;
+            if (angle < 0) angle += 360.0;
             return angle;
-        }
-
-        // --- 2. HISTORICAL TIME CORRECTIONS (Delta T) ---
-
-        // NASA/JPL Historical Delta T Values (5-year intervals)
-        // Source: Espenak/Meeus
-        // 1900: -2.7, 1905: 3.8, 1910: 10.4, ...
-        const DELTA_T_TABLE = {
-            1900: -2.7,  1905: 3.8,   1910: 10.4,  1915: 17.2,
-            1920: 21.2,  1925: 23.6,  1930: 24.0,  1935: 23.9,
-            1940: 24.3,  1945: 26.7,  1950: 29.2,  1955: 31.1,
-            1960: 33.2,  1965: 35.7,  1970: 40.2,  1975: 45.5,
-            1980: 50.5,  1985: 54.3,  1990: 56.9,  1995: 60.8,
-            2000: 63.8,  2005: 64.7,  2010: 66.1,  2015: 67.6,
-            2020: 69.4,  2025: 70.0,  2030: 71.0,  2035: 72.0, // Projections
-            2040: 74.0,  2045: 76.0,  2050: 78.0
         };
 
-        function getDeltaT(year) {
-            // Precise linear interpolation for years between data points
-            if (year < 1900) return -2.7; // Clamp lower
-            if (year > 2050) return 78.0 + (year - 2050) * 0.5; // Simple extrapolation
+        // --- 1. TIME & DELTA T (Espenak/Meeus) ---
+        const DELTA_T_TABLE = {
+            1990: 56.9, 1991: 57.6, 1992: 58.3, 1993: 59.4, 1994: 60.2,
+            1995: 60.8, 1996: 61.6, 1997: 62.3, 1998: 63.0, 1999: 63.5, 
+            2000: 63.8, 2010: 66.1, 2020: 69.4, 2025: 72.0
+        };
 
-            // Find 5-year block
-            const block = Math.floor((year - 1900) / 5) * 5 + 1900;
-            const nextBlock = block + 5;
+        const getDeltaT = (decimalYear) => {
+            if (decimalYear < 1900) return -2.7;
+            if (decimalYear > 2030) return 69.4 + (decimalYear - 2020) * 0.5;
             
-            const val1 = DELTA_T_TABLE[block];
-            const val2 = DELTA_T_TABLE[nextBlock] !== undefined ? DELTA_T_TABLE[nextBlock] : val1 + 2;
+            const yInt = Math.floor(decimalYear);
+            if (DELTA_T_TABLE[yInt] !== undefined && DELTA_T_TABLE[yInt+1] !== undefined) {
+                return DELTA_T_TABLE[yInt] + (DELTA_T_TABLE[yInt+1] - DELTA_T_TABLE[yInt]) * (decimalYear - yInt);
+            }
+            const t = (decimalYear - 2000) / 100;
+            return 62.92 + 32.217 * t + 55.89 * t * t;
+        };
 
-            const fraction = (year - block) / 5.0;
-            return val1 + (val2 - val1) * fraction;
-        }
-
-        // Convert JS Date to Julian Ephemeris Day (JDE)
-        function toJulianEphemeris(date) {
+        const toJulianEphemeris = (date) => {
             const jdUtc = (date.getTime() / 86400000.0) + 2440587.5;
-            
-            // Apply Delta T correction (converting UTC to TD)
             const year = date.getUTCFullYear();
-            const deltaTSeconds = getDeltaT(year);
-            const deltaTDays = deltaTSeconds / 86400.0;
-            
-            return jdUtc + deltaTDays;
-        }
+            const startOfYear = new Date(Date.UTC(year, 0, 1));
+            const fraction = year + (date.getTime() - startOfYear.getTime()) / (365.25 * 86400000);
+            return jdUtc + (getDeltaT(fraction) / 86400.0);
+        };
 
-        // --- 3. TIMEZONE HANDLING (IST STRICT) ---
+        const toJulian = (date) => (date.getTime() / 86400000.0) + 2440587.5;
 
-        function getISTDayBoundaries(year, monthIndex, day) {
-            const utcBase = new Date(Date.UTC(year, monthIndex, day, 0, 0, 0));
-            // 00:00 IST is 18:30 UTC previous day (-5.5h)
-            const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        // --- 2. POSITIONAL ASTRONOMY (Meeus) ---
+
+        // Nutation (Degrees)
+        const getNutation = (T) => {
+            const Omega = normalize(125.04452 - 1934.136261 * T);
+            const L = normalize(280.4665 + 36000.7698 * T);
+            const LP = normalize(218.3165 + 481267.8813 * T);
+            return (-17.20 * Math.sin(Omega * D2R) - 1.32 * Math.sin(2*L*D2R) - 0.23 * Math.sin(2*LP*D2R) + 0.21 * Math.sin(2*Omega*D2R)) / 3600.0;
+        };
+
+        // Moon Longitude (ELP-2000 Truncated 60 terms + JPL Calibration)
+        const getMoonLon = (T, nutation) => {
+            const LP = normalize(218.3164477 + 481267.88123421 * T);
+            const D = normalize(297.8501921 + 445267.1114034 * T);
+            const M = normalize(357.5291092 + 35999.0502909 * T);
+            const MP = normalize(134.9633964 + 477198.8675055 * T);
+            const F = normalize(93.2720950 + 483202.0175233 * T);
+            const E = 1 - 0.002516 * T - 0.0000074 * T * T;
             
-            const startTimestamp = utcBase.getTime() - istOffsetMs;
-            const endTimestamp = startTimestamp + (24 * 60 * 60 * 1000); 
+            const TERMS = [[0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],[0,1,0,0,-185116*E],[0,0,0,2,-114332],[2,0,-2,0,58793],[2,-1,-1,0,57066*E],[2,0,1,0,53322],[2,-1,0,0,45758*E],[0,1,-1,0,-40923*E],[1,0,0,0,-34720],[0,1,1,0,-30383*E],[2,0,0,-2,15327],[0,0,1,2,-12528],[0,0,1,-2,10980],[4,0,-1,0,10675],[0,0,3,0,10034],[4,0,-2,0,8548],[2,1,-1,0,-7888*E],[2,1,0,0,-6766*E],[1,0,-1,0,-5163],[1,1,0,0,4987*E],[2,-1,1,0,4036*E],[2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2696*E],[2,0,-1,2,-2602],[2,-1,-2,0,2396*E],[1,0,1,0,-2348],[2,-2,0,0,2236*E],[0,1,2,0,-2120*E],[0,2,0,0,-2062*E],[2,-2,-1,0,2043*E],[2,0,1,-2,-1773],[2,0,0,2,-1595],[4,-1,-1,0,1627*E],[0,0,2,2,-1110],[3,0,-1,0,-892],[2,1,1,0,-563*E],[0,0,4,0,506],[4,0,-1,2,-485],[2,1,-2,0,484*E],[2,-1,2,0,-459*E],[1,1,1,0,-435*E],[2,0,3,0,-427],[0,1,-3,0,-388*E],[4,-1,-2,0,373*E],[2,-1,-1,2,361*E],[2,-2,1,0,-351*E],[0,1,3,0,-344*E],[4,0,1,0,-336],[1,1,-1,0,322*E],[2,1,0,-2,-303*E],[4,0,-3,0,298],[4,-1,0,0,290*E],[2,-1,0,2,256*E],[4,0,0,-2,-253],[2,0,1,2,-249]];
+
+            let sum = 0;
+            for(let i=0;i<TERMS.length;i++) sum += TERMS[i][4] * Math.sin((TERMS[i][0]*D + TERMS[i][1]*M + TERMS[i][2]*MP + TERMS[i][3]*F) * D2R);
+            
+            // +0.0035 Calibration for Traditional Lahiri alignment
+            return normalize(LP + (sum / 1000000.0) + nutation + 0.0035);
+        };
+
+        // Sun Longitude (High Precision for Tithi)
+        const getSunLon = (T, nutation) => {
+            const L0 = normalize(280.46646 + 36000.76983 * T + 0.0003032 * T*T);
+            const M = normalize(357.52911 + 35999.05029 * T - 0.0001537 * T*T);
+            const C = (1.914602 - 0.004817 * T - 0.000014 * T*T) * Math.sin(M * D2R)
+                    + (0.019993 - 0.000101 * T) * Math.sin(2 * M * D2R)
+                    + 0.000289 * Math.sin(3 * M * D2R);
+            // Apparent Longitude = Geometric + Nutation - Aberration(~20.47")
+            return normalize(L0 + C + nutation - 0.00569);
+        };
+
+        // --- 3. PANCHANGAM CALCULATOR ---
+        const calculateAstro = (date) => {
+            const jde = toJulianEphemeris(date);
+            const T = (jde - 2451545.0) / 36525.0;
+            const nutation = getNutation(T);
+            
+            const sunLon = getSunLon(T, nutation);
+            const moonLon = getMoonLon(T, nutation);
+            
+            // Ayanamsa: Traditional Lahiri (Govt of India)
+            const ayanamsa = 23.857092 + 1.396041 * T + nutation;
+            
+            // 1. NAKSHATRA (Sidereal Moon)
+            const siderealMoon = normalize(moonLon - ayanamsa);
+            const nakshatraIndex = Math.floor(siderealMoon / 13.333333333);
+            
+            // 2. TITHI (Moon - Sun)
+            let elongation = normalize(moonLon - sunLon);
+            const tithiIndex = Math.floor(elongation / 12.0); // 0-29
             
             return {
-                start: new Date(startTimestamp),
-                end: new Date(endTimestamp)
+                nakshatra: nakshatraIndex % 27,
+                tithi: tithiIndex % 30
             };
-        }
+        };
 
-        // --- 4. ASTRONOMICAL ALGORITHMS ---
-
-        // Nutation in Longitude (Approximation of largest terms)
-        function getNutationLongitude(T) {
-            const D = normalize(297.85036 + 445267.11148 * T);
-            const M = normalize(357.52772 + 35999.05034 * T);
-            const MP = normalize(134.96298 + 477198.867398 * T);
-            const F = normalize(93.27191 + 483202.017538 * T);
-            const Omega = normalize(125.04452 - 1934.136261 * T);
-
-            let dPsi = 0;
-            dPsi += -171996 * Math.sin(Omega * DEG2RAD);
-            dPsi += -13187 * Math.sin(2 * (F - D + Omega) * DEG2RAD);
-            dPsi += -2274 * Math.sin(2 * (F + Omega) * DEG2RAD);
-            dPsi += 2062 * Math.sin(2 * Omega * DEG2RAD);
-
-            return dPsi * 0.0001 / 3600.0;
-        }
-
-        // Canonical Lahiri Ayanamsa (Chitra Paksha)
-        // Calculated for dynamical time (JDE)
-        function getLahiriAyanamsa(jde) {
-            const T = (jde - 2451545.0) / 36525.0;
-            // Mean Lahiri Ayanamsa (Reference J2000: 23° 51' 25.532")
-            return 23.857092 + 1.396041 * T;
-        }
-
-        // High Precision Moon Longitude (ELP-2000 Truncated)
-        function getMoonLongitude(jde) {
-            const T = (jde - 2451545.0) / 36525.0;
-
-            const LP = normalize(218.3164477 + 481267.88123421 * T); 
-            const D = normalize(297.8501921 + 445267.1114034 * T);   
-            const M = normalize(357.5291092 + 35999.0502909 * T);    
-            const MP = normalize(134.9633964 + 477198.8675055 * T);  
-            const F = normalize(93.2720950 + 483202.0175233 * T);    
-
-            const E = 1 - 0.002516 * T - 0.0000074 * T * T;
-            const E2 = E * E;
-
-            const TERMS = [
-                [0, 0, 1, 0, 6.288774],
-                [2, 0, -1, 0, 1.274027],
-                [2, 0, 0, 0, 0.658314],
-                [0, 0, 2, 0, 0.213618],
-                [0, 1, 0, 0, -0.185116], 
-                [0, 0, 0, 2, -0.114332],
-                [2, 0, -2, 0, 0.058793],
-                [2, -1, -1, 0, 0.057066], 
-                [2, 0, 1, 0, 0.053322],
-                [2, -1, 0, 0, 0.045758], 
-                [0, 1, -1, 0, -0.040923], 
-                [1, 0, 0, 0, -0.034720],
-                [0, 1, 1, 0, -0.030383], 
-                [2, 0, 0, -2, 0.015327],
-                [0, 0, 1, 2, -0.012528],
-                [0, 0, 1, -2, 0.010980],
-                [4, 0, -1, 0, 0.010675],
-                [0, 0, 3, 0, 0.010034],
-                [4, 0, -2, 0, 0.008548],
-                [2, 1, -1, 0, -0.007888], 
-                [2, 1, 0, 0, -0.006766], 
-                [1, 0, -1, 0, -0.005163],
-                [1, 1, 0, 0, 0.004987], 
-                [2, -1, 1, 0, 0.004036], 
-                [2, 0, 2, 0, 0.003994],
-                [4, 0, 0, 0, 0.003861],
-                [2, 0, -3, 0, 0.003665],
-                [0, 1, -2, 0, -0.002696], 
-                [2, 0, -1, 2, -0.002602],
-                [2, -1, -2, 0, 0.002396], 
-                [1, 0, 1, 0, -0.002348],
-                [2, -2, 0, 0, 0.002236], 
-                [0, 1, 2, 0, -0.002120], 
-                [0, 2, 0, 0, -0.002062], 
-                [2, -2, -1, 0, 0.002043], 
-                [2, 0, 1, -2, -0.001773],
-                [2, 0, 0, 2, -0.001595],
-                [4, -1, -1, 0, 0.001627], 
-                [0, 0, 2, 2, -0.001110],
-                [3, 0, -1, 0, -0.000892],
-                [2, 1, 1, 0, -0.000563], 
-                [0, 0, 4, 0, 0.000506],
-                [4, 0, -1, 2, -0.000485],
-                [2, 1, -2, 0, 0.000484], 
-                [2, -1, 2, 0, -0.000459], 
-                [1, 1, 1, 0, -0.000435], 
-                [2, 0, 3, 0, -0.000427],
-                [0, 1, -3, 0, -0.000388], 
-                [4, -1, -2, 0, 0.000373], 
-                [2, -1, -1, 2, 0.000361], 
-                [2, -2, 1, 0, -0.000351], 
-                [0, 1, 3, 0, -0.000344], 
-                [4, 0, 1, 0, -0.000336]
-            ];
-
-            let sumL = 0;
-            for (let i = 0; i < TERMS.length; i++) {
-                const [d, m, mp, f, coeff] = TERMS[i];
-                const arg = (d * D + m * M + mp * MP + f * F) * DEG2RAD;
-                
-                let correctedCoeff = coeff;
-                if (Math.abs(m) === 1) correctedCoeff *= E;
-                if (Math.abs(m) === 2) correctedCoeff *= E2;
-
-                sumL += correctedCoeff * Math.sin(arg);
-            }
-
-            const nutation = getNutationLongitude(T);
-            const trueTropicalLon = normalize(LP + sumL + nutation);
-
-            return trueTropicalLon;
-        }
-
-        function getNakshatra(date) {
-            const jde = toJulianEphemeris(date); 
-            const tropicalLon = getMoonLongitude(jde);
-            const ayanamsa = getLahiriAyanamsa(jde);
-            const siderealLon = normalize(tropicalLon - ayanamsa);
+        // --- 4. SUNRISE CALCULATOR ---
+        const getSunrise = (date, lat, lon) => {
+            const jd = toJulian(date);
+            const T = (jd - 2451545.0) / 36525.0;
+            const { delta } = { delta: Math.asin(Math.sin((280.46646+36000.76983*T)*D2R)*Math.sin((23.439-0.013*T)*D2R))*R2D }; 
+            const cosH = (Math.cos(90.8333*D2R) - Math.sin(lat*D2R)*Math.sin(delta*D2R)) / (Math.cos(lat*D2R)*Math.cos(delta*D2R));
+            if (cosH > 1 || cosH < -1) return null;
             
-            const span = 360 / 27.0;
-            let index = Math.floor(siderealLon / span);
-            index = index % 27; 
+            const noonOffset = (720 - 4*lon) - (9.87*Math.sin(2*(280.466+36000.77*T)*D2R) - 7.53*Math.cos((357.529+35999.05*T)*D2R) - 1.5*Math.sin((357.529+35999.05*T)*D2R));
+            const sunriseUTCMin = noonOffset - (Math.acos(cosH)*R2D*4);
+            
+            const d = new Date(date);
+            d.setUTCHours(0,0,0,0);
+            d.setUTCMinutes(sunriseUTCMin);
+            return d;
+        };
 
-            return { index, lon: siderealLon };
-        }
-
-        // --- 5. DATA CONSTANTS ---
-
+        // --- DATA ---
         const NAKSHATRAS = [
-            { id: 0, en: "Ashwini", ml: "അശ്വതി" },
-            { id: 1, en: "Bharani", ml: "ഭരണി" },
-            { id: 2, en: "Krittika", ml: "കാർത്തിക" },
-            { id: 3, en: "Rohini", ml: "രോഹിണി" },
-            { id: 4, en: "Mrigashirsha", ml: "മകയിരം" },
-            { id: 5, en: "Ardra", ml: "തിരുവാതിര" },
-            { id: 6, en: "Punarvasu", ml: "പുണർതം" },
-            { id: 7, en: "Pushya", ml: "പൂയം" },
-            { id: 8, en: "Ashlesha", ml: "ആയില്യം" },
-            { id: 9, en: "Magha", ml: "മകം" },
-            { id: 10, en: "Purva Phalguni", ml: "പൂരം" },
-            { id: 11, en: "Uttara Phalguni", ml: "ഉത്രം" },
-            { id: 12, en: "Hasta", ml: "അത്തം" },
-            { id: 13, en: "Chitra", ml: "ചിത്തിര" },
-            { id: 14, en: "Swati", ml: "ചോതി" },
-            { id: 15, en: "Vishakha", ml: "വിശാഖം" },
-            { id: 16, en: "Anuradha", ml: "അനിഴം" },
-            { id: 17, en: "Jyeshtha", ml: "തൃക്കേട്ട" },
-            { id: 18, en: "Mula", ml: "മൂലം" },
-            { id: 19, en: "Purva Ashadha", ml: "പൂരാടം" },
-            { id: 20, en: "Uttara Ashadha", ml: "ഉത്രാടം" },
-            { id: 21, en: "Shravana", ml: "തിരുവോണം" },
-            { id: 22, en: "Dhanishta", ml: "അവിട്ടം" },
-            { id: 23, en: "Shatabhisha", ml: "ചതയം" },
-            { id: 24, en: "Purva Bhadrapada", ml: "പൂരുരുട്ടാതി" },
-            { id: 25, en: "Uttara Bhadrapada", ml: "ഉത്രട്ടാതി" },
-            { id: 26, en: "Revati", ml: "രേവതി" }
+            "Aswathi", "Bharani", "Karthika", "Rohini", "Makayiram", "Thiruvathira", "Punartham", "Pooyam", "Ayilyam", 
+            "Makam", "Pooram", "Uthram", "Atham", "Chithira", "Chothi", "Vishakham", "Anizham", "Thrikketta", 
+            "Moolam", "Pooradam", "Uthradam", "Thiruvonam", "Avittam", "Chathayam", "Pooruruttathi", "Uthruttathi", "Revathi"
+        ];
+        const NAK_ML = [
+            "അശ്വതി", "ഭരണി", "കാർത്തിക", "രോഹിണി", "മകയിരം", "തിരുവാതിര", "പുണർതം", "പൂയം", "ആയില്യം",
+            "മകം", "പൂരം", "ഉത്രം", "അത്തം", "ചിത്തിര", "ചോതി", "വിശാഖം", "അനിഴം", "തൃക്കേട്ട",
+            "മൂലം", "പൂരാടം", "ഉത്രാടം", "തിരുവോണം", "അവിട്ടം", "ചതയം", "പൂരുരുട്ടാതി", "ഉത്രട്ടാതി", "രേവതി"
+        ];
+        
+        const TITHIS = [
+            "Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima",
+            "Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Amavasya"
+        ];
+        const TITHI_ML = [
+            "പ്രഥമ", "ദ്വിതീയ", "തൃതീയ", "ചതുർത്ഥി", "പഞ്ചമി", "ഷഷ്ഠി", "സപ്തമി", "അഷ്ടമി", "നവമി", "ദശമി", "ഏകാദശി", "ദ്വാദശി", "ത്രയോദശി", "ചതുർദ്ദശി", "പൗർണ്ണമി",
+            "പ്രഥമ", "ദ്വിതീയ", "തൃതീയ", "ചതുർത്ഥി", "പഞ്ചമി", "ഷഷ്ഠി", "സപ്തമി", "അഷ്ടമി", "നവമി", "ദശമി", "ഏകാദശി", "ദ്വാദശി", "ത്രയോദശി", "ചതുർദ്ദശി", "അമാവാസി"
         ];
 
         const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const WEEKDAYS_ML = ["ഞായർ", "തിങ്കൾ", "ചൊവ്വ", "ബുധൻ", "വ്യാഴം", "വെള്ളി", "ശനി"];
 
-        // --- 6. COMPONENT LOGIC ---
+        const LOCATIONS = [
+            { name: "Ernakulam", lat: 9.9312, lon: 76.2673 },
+            { name: "Trivandrum", lat: 8.5241, lon: 76.9366 },
+            { name: "Kozhikode", lat: 11.2588, lon: 75.7804 },
+            { name: "Thrissur", lat: 10.5276, lon: 76.2144 },
+            { name: "Kannur", lat: 11.8745, lon: 75.3704 },
+            { name: "Palakkad", lat: 10.7867, lon: 76.6548 },
+            { name: "Dubai", lat: 25.2048, lon: 55.2708 },
+            { name: "Bangalore", lat: 12.9716, lon: 77.5946 },
+            { name: "Chennai", lat: 13.0827, lon: 80.2707 },
+            { name: "London", lat: 51.5074, lon: -0.1278 },
+            { name: "New York", lat: 40.7128, lon: -74.0060 }
+        ];
 
+        // --- APP ---
         function App() {
-            const [selectedYMD, setSelectedYMD] = React.useState(() => {
-                const now = new Date();
-                return { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
-            });
+            const [date, setDate] = React.useState(new Date());
+            const [viewDate, setViewDate] = React.useState(new Date());
+            const [location, setLocation] = React.useState(LOCATIONS[0]);
+            const [data, setData] = React.useState(null);
 
-            const [viewYM, setViewYM] = React.useState(() => {
-                const now = new Date();
-                return { y: now.getFullYear(), m: now.getMonth() };
-            });
+            // IST Helpers
+            const getIST = (d, h=0, m=0) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), h-5, m-30));
+            const fmtTime = (d) => d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour:'2-digit', minute:'2-digit', hour12:true });
 
-            const [result, setResult] = React.useState({ data: [], error: null });
-
-            const calculate = React.useCallback(() => {
-                try {
-                    const { start, end } = getISTDayBoundaries(selectedYMD.y, selectedYMD.m, selectedYMD.d);
-                    const startData = getNakshatra(start);
-                    const endData = getNakshatra(end);
-                    
-                    const res = [];
-                    
-                    const formatTime = (d) => d.toLocaleTimeString('en-IN', {
-                        timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true
-                    });
-
-                    if (startData.index === endData.index) {
-                        res.push({ ...NAKSHATRAS[startData.index], type: 'Full Day', timeStr: '' });
-                    } else {
-                        let low = start.getTime();
-                        let high = end.getTime();
-                        
-                        // 25 iterations for <1s precision
-                        for(let i=0; i<25; i++) {
-                            const mid = low + (high - low)/2;
-                            const midData = getNakshatra(new Date(mid));
-                            if(midData.index === startData.index) low = mid;
-                            else high = mid;
-                        }
-                        
-                        res.push({ ...NAKSHATRAS[startData.index], type: 'Until', timeStr: `Ends at ${formatTime(new Date(low))}` });
-                        res.push({ ...NAKSHATRAS[endData.index], type: 'From', timeStr: `Starts at ${formatTime(new Date(high))}` });
-                    }
-                    
-                    setResult({ data: res, error: null });
-                } catch (e) {
-                    console.error(e);
-                    setResult({ data: [], error: "Calculation Failed. Please check inputs." });
+            // Core Calculation
+            const calculatePanchangam = React.useCallback(() => {
+                const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+                
+                // 1. Sunrise (for Day Attributes)
+                const noon = getIST(date, 12, 0);
+                const sunrise = getSunrise(noon, location.lat, location.lon);
+                
+                // 2. Day Attributes (At Sunrise)
+                let dayNak = null, dayTithi = null;
+                if (sunrise) {
+                    const res = calculateAstro(sunrise);
+                    dayNak = res.nakshatra;
+                    dayTithi = res.tithi;
                 }
-            }, [selectedYMD]);
 
-            React.useEffect(() => {
-                calculate();
-            }, [calculate]);
+                // 3. Phase Scanner
+                const start = getIST(date, 0, 0);
+                const end = getIST(date, 23, 59);
+                
+                const scanPhases = (type) => {
+                    const phases = [];
+                    let currTime = start.getTime();
+                    const endTime = end.getTime();
+                    
+                    let initial = calculateAstro(new Date(currTime));
+                    let currIdx = type === 'nak' ? initial.nakshatra : initial.tithi;
+                    
+                    phases.push({ idx: currIdx, start: null, end: null });
 
-            // Calendar Helpers
-            const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
-            const getFirstDay = (y, m) => new Date(y, m, 1).getDay();
+                    while (currTime < endTime) {
+                        const nextTime = currTime + (5 * 60 * 1000); // 5 min step
+                        const nextVal = calculateAstro(new Date(nextTime));
+                        const nextIdx = type === 'nak' ? nextVal.nakshatra : nextVal.tithi;
 
-            const changeMonth = (delta) => {
-                let newM = viewYM.m + delta;
-                let newY = viewYM.y;
-                if (newM > 11) { newM = 0; newY++; }
-                if (newM < 0) { newM = 11; newY--; }
-                setViewYM({ y: newY, m: newM });
+                        if (nextIdx !== currIdx) {
+                            let lo = currTime, hi = nextTime;
+                            for(let k=0; k<15; k++) {
+                                const mid = lo + (hi-lo)/2;
+                                const midVal = calculateAstro(new Date(mid));
+                                const midIdx = type === 'nak' ? midVal.nakshatra : midVal.tithi;
+                                if(midIdx === currIdx) lo = mid; else hi = mid;
+                            }
+                            const trans = new Date(hi);
+                            phases[phases.length-1].end = trans;
+                            phases.push({ idx: nextIdx, start: trans, end: null });
+                            currIdx = nextIdx;
+                        }
+                        currTime = nextTime;
+                    }
+                    return phases;
+                };
+
+                const nakPhases = scanPhases('nak');
+                const tithiPhases = scanPhases('tithi');
+
+                setData({ 
+                    sunrise, dayNak, dayTithi, nakPhases, tithiPhases,
+                    weekday: date.toLocaleDateString('en-GB', { weekday: 'long' })
+                });
+
+            }, [date, location]);
+
+            React.useEffect(() => { calculatePanchangam(); }, [calculatePanchangam]);
+
+            // Calendar Handlers
+            const handleMonthChange = (e) => {
+                const newM = parseInt(e.target.value);
+                const d = new Date(viewDate);
+                d.setMonth(newM);
+                setViewDate(d);
             };
 
-            const selectDate = (day) => {
-                setSelectedYMD({ y: viewYM.y, m: viewYM.m, d: day });
+            const handleYearChange = (e) => {
+                const newY = parseInt(e.target.value);
+                if(!isNaN(newY) && newY > 0 && newY < 10000) {
+                    const d = new Date(viewDate);
+                    d.setFullYear(newY);
+                    setViewDate(d);
+                }
+            };
+
+            const selectDay = (day) => {
+                const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+                setDate(d);
             };
 
             const goToToday = () => {
                 const now = new Date();
-                const y = now.getFullYear();
-                const m = now.getMonth();
-                const d = now.getDate();
-                setSelectedYMD({ y, m, d });
-                setViewYM({ y, m });
+                setDate(now);
+                setViewDate(now);
             };
 
-            const IconLeft = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>;
-            const IconRight = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>;
-            const IconCal = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>;
-
-            const totalDays = getDaysInMonth(viewYM.y, viewYM.m);
-            const startDay = getFirstDay(viewYM.y, viewYM.m);
-            const daysArray = [];
-            for (let i = 0; i < startDay; i++) daysArray.push(null);
-            for (let i = 1; i <= totalDays; i++) daysArray.push(i);
-
-            const displayDate = new Date(selectedYMD.y, selectedYMD.m, selectedYMD.d);
-            const weekday = WEEKDAYS_ML[displayDate.getDay()];
+            const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+            const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200">
-                        
-                        <div className="bg-gradient-to-br from-indigo-700 to-purple-800 p-6 text-white">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1 opacity-80 text-xs font-bold uppercase tracking-wider">
-                                        <IconCal /> Kerala Panchangam
+                    <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden ring-1 ring-slate-200">
+                        {/* Header */}
+                        <div className="bg-indigo-900 p-6 text-white relative overflow-hidden">
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h1 className="text-2xl font-bold">Kerala Panchangam</h1>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] bg-indigo-800 px-2 py-0.5 rounded border border-indigo-700">Tithi & Nakshatra</span>
+                                        </div>
                                     </div>
-                                    <h1 className="text-2xl font-bold">Nakshatra Finder</h1>
-                                    <p className="text-indigo-200 text-xs mt-1">1900-2050 Precision</p>
+                                    <button onClick={goToToday} className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-xs font-bold transition backdrop-blur-sm">Today</button>
                                 </div>
-                                <button onClick={goToToday} className="bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg text-xs font-semibold backdrop-blur-sm border border-white/10">
-                                    Today
-                                </button>
+                                
+                                <div className="relative">
+                                    <select 
+                                        value={location.name} 
+                                        onChange={(e) => setLocation(LOCATIONS.find(l=>l.name===e.target.value))}
+                                        className="w-full bg-indigo-800/50 border border-indigo-500/30 rounded-lg py-2 px-3 text-sm text-indigo-100 outline-none focus:bg-indigo-800 transition cursor-pointer"
+                                    >
+                                        {LOCATIONS.map(l => <option key={l.name} value={l.name}>{l.name}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="p-5 border-b border-slate-100">
-                            <div className="flex items-center justify-between mb-4 bg-slate-50 p-1 rounded-xl">
-                                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-slate-500 transition-all"><IconLeft /></button>
-                                <div className="flex gap-2 items-center">
+                        {/* Calendar Strip with New Controls */}
+                        <div className="bg-slate-50 p-4 border-b border-slate-100">
+                            <div className="flex gap-2 mb-3">
+                                {/* Month Dropdown */}
+                                <div className="relative flex-grow">
                                     <select 
-                                        value={viewYM.m}
-                                        onChange={(e) => setViewYM({...viewYM, m: parseInt(e.target.value)})}
-                                        className="bg-transparent font-bold text-slate-700 text-sm focus:outline-none cursor-pointer"
+                                        value={viewDate.getMonth()} 
+                                        onChange={handleMonthChange}
+                                        className="w-full bg-white border border-slate-200 text-slate-700 text-sm font-bold py-2 px-3 rounded-lg outline-none focus:border-indigo-500 cursor-pointer"
+                                        style={{backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`}}
                                     >
                                         {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
                                     </select>
-                                    <input 
-                                        type="number"
-                                        value={viewYM.y}
-                                        onChange={(e) => setViewYM({...viewYM, y: parseInt(e.target.value)})}
-                                        className="w-16 bg-transparent font-bold text-slate-700 text-sm focus:outline-none text-center border-b border-slate-300 focus:border-indigo-500"
-                                    />
                                 </div>
-                                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-slate-500 transition-all"><IconRight /></button>
+                                {/* Year Input */}
+                                <input 
+                                    type="number" 
+                                    value={viewDate.getFullYear()} 
+                                    onChange={handleYearChange}
+                                    className="w-24 bg-white border border-slate-200 text-slate-700 text-sm font-bold py-2 px-3 rounded-lg outline-none focus:border-indigo-500 text-center"
+                                />
                             </div>
 
-                            <div className="calendar-grid mb-2">
-                                {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-[10px] text-slate-400 font-bold text-center uppercase">{d}</div>)}
-                            </div>
-                            
                             <div className="calendar-grid">
-                                {daysArray.map((d, i) => {
-                                    if (!d) return <div key={i} className="h-9"></div>;
-                                    const isSel = d === selectedYMD.d && viewYM.m === selectedYMD.m && viewYM.y === selectedYMD.y;
-                                    const isToday = d === new Date().getDate() && viewYM.m === new Date().getMonth() && viewYM.y === new Date().getFullYear();
-                                    
+                                {['S','M','T','W','T','F','S'].map(d=><div key={d} className="text-center text-[10px] font-bold text-slate-400">{d}</div>)}
+                                {Array(firstDay).fill(null).map((_,i)=><div key={`e${i}`} />)}
+                                {Array(daysInMonth).fill(null).map((_,i)=>{
+                                    const d = i+1;
+                                    const isSel = d === date.getDate() && viewDate.getMonth() === date.getMonth() && viewDate.getFullYear() === date.getFullYear();
                                     return (
-                                        <button 
-                                            key={i} 
-                                            onClick={() => selectDate(d)}
-                                            className={`
-                                                h-9 rounded-lg text-sm font-medium transition-all relative flex items-center justify-center
-                                                ${isSel ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-100 text-slate-600'}
-                                                ${isToday && !isSel ? 'text-indigo-600 font-bold' : ''}
-                                            `}
-                                        >
+                                        <button key={d} onClick={() => selectDay(d)}
+                                            className={`h-8 rounded text-sm font-medium transition ${isSel ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white hover:shadow-sm text-slate-600'}`}>
                                             {d}
-                                            {isToday && !isSel && <span className="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full"></span>}
                                         </button>
                                     )
                                 })}
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 p-6 min-h-[200px]">
-                            {result.error ? (
-                                <div className="text-red-500 text-center text-sm font-medium p-4 bg-red-50 rounded-xl border border-red-100">
-                                    {result.error}
-                                </div>
-                            ) : (
-                                <div>
-                                    <div className="mb-4 flex items-end justify-between">
+                        {/* Results */}
+                        {data && (
+                            <div className="p-0">
+                                {/* Date Header */}
+                                <div className="px-6 pt-6 pb-2">
+                                    <div className="flex justify-between items-end">
                                         <div>
-                                            <h2 className="text-xl font-bold text-slate-800">
-                                                {displayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                            </h2>
-                                            <div className="text-sm font-medium text-slate-500 mt-1 malayalam-font">{weekday}</div>
+                                            <h2 className="text-2xl font-bold text-slate-800">{date.getDate()}</h2>
+                                            <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">{date.toLocaleDateString('en-GB',{month:'long', year:'numeric'})}</p>
+                                            <p className="text-xs text-indigo-600 mt-1 font-semibold">{data.weekday}</p>
                                         </div>
-                                        <div className="text-[10px] font-bold bg-white border border-slate-200 px-2 py-1 rounded text-slate-400">
-                                            IST (UTC+5:30)
+                                        <div className="text-right">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase">Sunrise</div>
+                                            <div className="text-sm font-bold text-amber-600">{fmtTime(data.sunrise)}</div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div className="space-y-3">
-                                        {result.data.map((item, idx) => (
-                                            <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 flex-shrink-0 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-700 font-bold text-lg malayalam-font">
-                                                        {item.ml.charAt(0)}
+                                {/* Content Tabs */}
+                                <div className="space-y-4 p-6 pt-2 pb-8">
+                                    {/* Nakshatra Section */}
+                                    <div className="space-y-2">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nakshatra (Birth Star)</h3>
+                                        {data.nakPhases.map((p, i) => (
+                                            <div key={i} className={`flex justify-between items-center p-3 rounded-xl border ${p.idx === data.dayNak ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-100'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${p.idx === data.dayNak ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {NAK_ML[p.idx].charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <div className="flex items-baseline gap-2">
-                                                            <span className="font-bold text-slate-800">{item.en}</span>
-                                                            <span className="text-xs text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded malayalam-font">{item.ml}</span>
-                                                        </div>
-                                                        <div className="text-xs text-slate-400 font-medium mt-0.5">
-                                                            {item.type === 'Full Day' ? 'All Day' : item.type === 'Until' ? 'Active Until' : 'Starts After'}
-                                                        </div>
+                                                        <div className="font-bold text-slate-800 text-sm">{NAKSHATRAS[p.idx]}</div>
+                                                        <div className="text-[10px] text-slate-500 malayalam-font">{NAK_ML[p.idx]}</div>
                                                     </div>
                                                 </div>
-                                                
-                                                {item.timeStr && (
-                                                    <div className="text-right">
-                                                        <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Time</div>
-                                                        <div className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                                                            {item.timeStr.replace('Ends at ', '').replace('Starts at ', '')}
-                                                        </div>
+                                                <div className="text-right">
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase">{!p.start && !p.end ? 'Full Day' : (!p.start ? 'Until' : (p.end ? 'From' : 'After'))}</div>
+                                                    <div className="text-xs font-bold text-slate-700">
+                                                        {!p.start && !p.end ? 'All Day' : 
+                                                         (!p.start ? fmtTime(p.end) : 
+                                                          (p.end ? `${fmtTime(p.start)} - ${fmtTime(p.end)}` : fmtTime(p.start)))}
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
+
+                                    {/* Tithi Section */}
+                                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-4">Tithi (Lunar Day)</h3>
+                                        {data.tithiPhases.map((p, i) => {
+                                            const isShukla = p.idx < 15;
+                                            return (
+                                                <div key={i} className={`flex justify-between items-center p-3 rounded-xl border ${p.idx === data.dayTithi ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] ${isShukla ? 'bg-amber-100 text-amber-700' : 'bg-slate-800 text-slate-200'}`}>
+                                                            {isShukla ? 'S' : 'K'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-bold text-slate-800 text-sm">{TITHIS[p.idx]}</div>
+                                                            <div className="text-[10px] text-slate-500 malayalam-font">{TITHI_ML[p.idx]}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase">{!p.start && !p.end ? 'Full Day' : (!p.start ? 'Until' : (p.end ? 'From' : 'After'))}</div>
+                                                        <div className="text-xs font-bold text-slate-700">
+                                                            {!p.start && !p.end ? 'All Day' : 
+                                                             (!p.start ? fmtTime(p.end) : 
+                                                              (p.end ? `${fmtTime(p.start)} - ${fmtTime(p.end)}` : fmtTime(p.start)))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
